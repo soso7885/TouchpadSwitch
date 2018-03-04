@@ -104,38 +104,38 @@ static void tpsd_init_check(struct udev *udev)
 {
 	int tps_off = 0;
 	struct udev_enumerate *enumerate;
-    struct udev_list_entry *devices;
-    struct udev_list_entry *dev_list_entry;
-    struct udev_device *dev;
-    struct udev_device *parent_dev;
+	struct udev_list_entry *devices;
+	struct udev_list_entry *dev_list_entry;
+	struct udev_device *dev;
+	struct udev_device *parent_dev;
 
 	enumerate = udev_enumerate_new(udev);
-    udev_enumerate_add_match_subsystem(enumerate, "input");
-    udev_enumerate_scan_devices(enumerate);
-    devices = udev_enumerate_get_list_entry(enumerate);
+	udev_enumerate_add_match_subsystem(enumerate, "input");
+	udev_enumerate_scan_devices(enumerate);
+	devices = udev_enumerate_get_list_entry(enumerate);
 
-    udev_list_entry_foreach(dev_list_entry, devices){
+	udev_list_entry_foreach(dev_list_entry, devices){
 		const char *path;
 		char name[128] = {0};
-		
+
 		path = udev_list_entry_get_name(dev_list_entry);
-        dev = udev_device_new_from_syspath(udev, path);
-        parent_dev = udev_device_get_parent_with_subsystem_devtype(dev, "input", 0);
-        if(parent_dev){
-            udev_device_unref(parent_dev);
-            continue;
-        }
-		
+		dev = udev_device_new_from_syspath(udev, path);
+		parent_dev = udev_device_get_parent_with_subsystem_devtype(dev, "input", 0);
+		if(parent_dev){
+			udev_device_unref(parent_dev);
+			continue;
+		}
+
 		snprintf(name, sizeof(name), "%s",
-					udev_device_get_sysattr_value(dev, "name"));
-		
+				udev_device_get_sysattr_value(dev, "name"));
+
 		udev_device_unref(dev);
 
 		if(strstr(name, "Mouse")){
 			tps_off = 1;
 			break;
 		}
-		
+
 		memset(name, 0, sizeof(name));
 	}
 
@@ -148,7 +148,6 @@ static void tpsd_init_check(struct udev *udev)
 		LOGMSG("first check: no mouse in used, enable touchpad");
 		system(CMD_TOUCHPAD_ENABLE);
 	}
-
 }
 
 int main(void)
