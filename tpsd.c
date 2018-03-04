@@ -13,8 +13,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#define CMD_TOUCHPAD_ENABLE		"synclient TouchpadOff=0"
-#define CMD_TOUCHPAD_DISABLE	"synclient TouchpadOff=1"
+#define CMD_TOUCHPAD_ENABLE "xinput set-prop `xinput list | grep -i touchpad | cut -f 2 | grep -oE '[[:digit:]]+'` \"Device Enabled\" 1"
+#define CMD_TOUCHPAD_DISABLE "xinput set-prop `xinput list | grep -i touchpad | cut -f 2 | grep -oE '[[:digit:]]+'` \"Device Enabled\" 0"
+
 #define LOGNAME	"TouchpadSwitch"
 
 const char *targ_name = "mouse";
@@ -89,11 +90,19 @@ static void daemonize(void)
 	}
 }
 
-#define LOGMSG(msg, args...)	syslog(LOG_NOTICE, msg, ##args);
-#define LOGERR(msg, args...) 	syslog(LOG_ERR, msg, ##args);
+#ifdef DAEMONIZE
+	#define LOGMSG(msg, args...)	syslog(LOG_NOTICE, msg, ##args);
+	#define LOGERR(msg, args...) 	syslog(LOG_ERR, msg, ##args);
+	#define LOGSTART(msg, args...)	syslog(LOG_WARNING, msg, ##args);
+#else 
+	#define LOGMSG(msg, args...)	do{}while(0);
+	#define LOGERR(msg, args...) 	fprintf(stderr, msg, ##args);
+	#define LOGSTART(msg, args...)	fprintf(stdout, msg, ##args);
+#endif
 
-static void tpsd_init_check(udev *udev)
+static void tpsd_init_check(struct udev *udev)
 {
+	int tps_off = 0;
 	struct udev_enumerate *enumerate;
     struct udev_list_entry *devices;
     struct udev_list_entry *dev_list_entry;
@@ -105,12 +114,9 @@ static void tpsd_init_check(udev *udev)
     udev_enumerate_scan_devices(enumerate);
     devices = udev_enumerate_get_list_entry(enumerate);
 
-	LOGMSG("Touchpad switch first check");
-
     udev_list_entry_foreach(dev_list_entry, devices){
 		const char *path;
 		char name[128] = {0};
-		int tps_off = 0;
 		
 		path = udev_list_entry_get_name(dev_list_entry);
         dev = udev_device_new_from_syspath(udev, path);
@@ -136,10 +142,10 @@ static void tpsd_init_check(udev *udev)
 	udev_enumerate_unref(enumerate);
 
 	if(tps_off){
-		LOGMSG("first check: disable touchpad");
+		LOGMSG("first check: detect mouse in used, disable touchpad");
 		system(CMD_TOUCHPAD_DISABLE);
 	}else{
-		LOGMSG("first check: enable touchpad");
+		LOGMSG("first check: no mouse in used, enable touchpad");
 		system(CMD_TOUCHPAD_ENABLE);
 	}
 
@@ -155,15 +161,17 @@ int main(void)
 	struct udev_monitor *udev_mon;
 	struct udev_device *event_dev;
 
+#ifdef DAEMONIZE
 	daemonize();
-	
+#endif
+
 	udev = udev_new();
 	if(!udev){
 		LOGERR("udev_new failed!");
 		exit(EXIT_FAILURE);
 	}
 
-	LOGMSG("-- Touchpad switch daemon START! --");
+	LOGSTART("-- Touchpad switch daemon START! --");
 
 	tpsd_init_check(udev);
 

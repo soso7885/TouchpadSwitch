@@ -5,10 +5,13 @@ LDFLAGS = -ludev
 
 TARGET = tpsd
 
-all: $(TARGET)
+all: daemon
 
-tpsd: $(SRC)
-	$(CC) -Wall $(CFLAGS) -o $@ $(SRC) $(LDFLAGS)
+nodaemon: $(SRC)
+	$(CC) -Wall $(CFLAGS) -o tpsd $(SRC) $(LDFLAGS)
+
+daemon: $(SRC)
+	$(CC) -Wall $(CFLAGS) -o tpsd $(SRC) $(LDFLAGS) -DDAEMONIZE
 
 clean:
 	rm -f $(TARGET)
